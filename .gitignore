@@ -34,3 +34,6 @@ override.tf.json
 
 credentials.json
 **/credentials.json
+
+## do not commit creds (yeeesh!)
+**/.config
