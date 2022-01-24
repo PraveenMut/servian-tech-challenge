@@ -13,6 +13,11 @@ variable "zone" {
     default = "australia-southeast-1a"
 }
 
+variable "database_name" {
+  type = string
+  default = "gtd-db"
+}
+
 variable "credentials" {
     type = string
 }
