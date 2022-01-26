@@ -9,3 +9,7 @@ provider "google-beta" {
   region      = var.gcp_region
   credentials = file(var.credentials)
 }
+
+provider "tls" {
+
+}

@@ -1,9 +1,39 @@
 ## Create IAM and workload federation identity pools for GitHub Actions
 
-resource "google_service_account" "sa-art-repo" {
+resource "google_service_account" "sa_art_repo" {
     account_id = "sa-art-repo"
     display_name = "Artifact Repository Service Account"
 }
+
+resource "google_service_account" "sa_bastion" {
+    account_id = "sa-bastion"
+    display_name = "Service Account for the bastion host"
+}
+
+resource "google_service_account_iam_member" "sa_bastion" {
+    service_account_id = google_service_account.sa_bastion.name
+    for_each = [
+        "roles/compute.osAdminLogin",
+        "roles/iam.serviceAccountUser"
+    ]
+    role = each.value
+    member= "serviceAccount:${google_service_account.sa_bastion.email}"
+}
+
+resource "google_service_account_key" "sa_bastion" {
+    service_account_id = google_service_account.sa_bastion.name
+}
+
+resource "tls_private_key" "bastion" {
+    algorithm = "RSA"
+    rsa_bits = 4096
+}
+
+resource "google_os_login_ssh_public_key" "bastion" {
+    user = google_service_account.sa_bastion.email
+    key = tls_private_key.bashion.public_key_openssh
+}
+
 
 resource "google_iam_workload_identity_pool" "github_pool" {
     provider = google-beta
@@ -28,7 +58,7 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
 
 resource "google_service_account_iam_member" "gh_pool_impersonator" {
     provider = google-beta
-    service_account_id = google_service_account.sa-art-repo.name
+    service_account_id = google_service_account.sa_art_repo.name
     role = "roles/iam.workloadIdentityProvider"
     member = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/*"
 }
@@ -106,15 +136,28 @@ resource "google_artifact_registry_repository" "gtd-app" {
     format = "DOCKER"
 }
 
-resource "google_artifact_registry_repository_iam_member" "sa-art-repo" {
+resource "google_artifact_registry_repository_iam_member" "sa_art_repo" {
     provider = google-beta
     location = google_artifact_registry_repository.gtd-app.location
     repository = google_artifact_registry_repository.gtd-app.name
     role = "roles/artifactregistry.writer"
-    member = "serviceAccount:${google_service_account.sa-art-repo.email}"
+    member = "serviceAccount:${google_service_account.sa_art_repo.email}"
 }
 
 ## Create the compute instance (bashion host)
+
+resource "google_compute_instance" "bastion1" {
+    name = "bastion-1"
+    machine_type = "f1-micro"
+    zone = var.zone
+    tags = ["bastion"]
+
+    boot_disk {
+        initialize_params {
+
+        }
+    }
+}
 
 ## execute remote commands
 
