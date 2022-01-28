@@ -12,7 +12,7 @@ resource "google_project_service" "this" {
     "servicenetworking.googleapis.com"
   ])
 
-  service = each.key
+  service = each.value
 
   project            =  data.google_client_config.current.project
   disable_on_destroy = true

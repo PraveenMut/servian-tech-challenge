@@ -154,13 +154,41 @@ resource "google_compute_instance" "bastion1" {
 
     boot_disk {
         initialize_params {
-
+            image = "centos-cloud/centos-7"
+            size = 10
         }
     }
+    network_interface {
+        network = "default"
+            access_config {
+                # Automatically assign a natted ip
+            }
+    }
+    service_account {
+      email = google_service_account.sa_bastion.email
+      scopes = ["compute-rw"]
+    }
+
+    metadata = {
+        enable-oslogin = "TRUE"
+    }
+
+    provisioner "remote-exec" {
+        connection {
+          type = "ssh"
+          user = google_service_account.sa_bastion.unique_id
+          private_key = tls_private_key.bashion.private_key_pem
+        }
+        inline = [
+          "echo 'Great Scott! We have a connection, Marty!'"
+        ]
+    }
+
+    depends_on = [
+       "google_compute_firewall.allow_ssh_to_bastion",
+       "google_service_account.sa_bastion",
+       "tls_private_key.bastion"
+    ]
 }
-
-## execute remote commands
-
-## Seed DB
 
 ## Create LB
