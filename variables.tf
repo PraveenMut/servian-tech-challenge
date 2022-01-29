@@ -3,6 +3,11 @@ variable "project" {
     default = "servian-gtd"
 }
 
+variable "app_name" {
+  type = string
+  default = "gtd-app"
+}
+
 variable "region" {
     type = string
     default = "australia-southeast-1"
@@ -25,4 +30,22 @@ variable "credentials" {
 variable "database_name" {
   type = string
   default = "app"
+}
+
+variable "gcp_apis" {
+    type = set(string)
+    default = [
+      "compute.googleapis.com",
+      "run.googleapis.com",
+      "cloudresourcemanager.googleapis.com",
+      "vpcaccess.googleapis.com",
+      "containerregistry.googleapis.com",
+      "sqladmin.googleapis.com",
+      "servicenetworking.googleapis.com"
+    ]
+}
+
+variable "network_source_tags" {
+  type = list(string)
+  default = ["bastion"]
 }

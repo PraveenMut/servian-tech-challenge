@@ -72,7 +72,7 @@ resource "google_sql_database" "database" {
 resource "google_artifact_registry_repository" "gtd_app" {
     provider = google-beta
     location = var.region
-    repository_id = "gtd-app"
+    repository_id = var.app_name
     description = "Repository to house the servian gtd application"
     format = "DOCKER"
 }
@@ -105,7 +105,7 @@ resource "google_compute_instance" "bastion1" {
     name = "bastion-1"
     machine_type = "f1-micro"
     zone = var.zone
-    tags = ["bastion"]
+    tags = var.network_source_tags
 
     boot_disk {
         initialize_params {

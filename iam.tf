@@ -27,7 +27,7 @@ resource "google_service_account_iam_member" "sa_bastion" {
         "roles/compute.osAdminLogin",
         "roles/iam.serviceAccountUser"
     ]
-    role = each.value
+    role = each.key
     member= "serviceAccount:${google_service_account.sa_bastion.email}"
 }
 
