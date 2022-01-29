@@ -25,7 +25,8 @@ resource "google_service_account_iam_member" "sa_bastion" {
     service_account_id = google_service_account.sa_bastion.name
     for_each = [
         "roles/compute.osAdminLogin",
-        "roles/iam.serviceAccountUser"
+        "roles/iam.serviceAccountUser",
+        "roles/cloudsql.editor"
     ]
     role = each.key
     member= "serviceAccount:${google_service_account.sa_bastion.email}"
