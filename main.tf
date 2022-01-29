@@ -5,9 +5,20 @@ resource "google_service_account" "sa_art_repo" {
     display_name = "Artifact Repository Service Account"
 }
 
+resource "google_service_account" "sa_github_actions" {
+    account_id = "sa-github-actions"
+    display_name = "GitHub Actions Service Account"
+}
+
 resource "google_service_account" "sa_bastion" {
     account_id = "sa-bastion"
     display_name = "Service Account for the bastion host"
+}
+
+resource "google_service_account_iam_member" "sa_github_actions" {
+  service_account_id = google_service_account.sa_github_actions.name
+  role = "roles/run.developer"
+  member = "serviceAccount:${google_service_account.sa_github_actions.email}"
 }
 
 resource "google_service_account_iam_member" "sa_bastion" {
@@ -19,21 +30,6 @@ resource "google_service_account_iam_member" "sa_bastion" {
     role = each.value
     member= "serviceAccount:${google_service_account.sa_bastion.email}"
 }
-
-resource "google_service_account_key" "sa_bastion" {
-    service_account_id = google_service_account.sa_bastion.name
-}
-
-resource "tls_private_key" "bastion" {
-    algorithm = "RSA"
-    rsa_bits = 4096
-}
-
-resource "google_os_login_ssh_public_key" "bastion" {
-    user = google_service_account.sa_bastion.email
-    key = tls_private_key.bashion.public_key_openssh
-}
-
 
 resource "google_iam_workload_identity_pool" "github_pool" {
     provider = google-beta
@@ -58,7 +54,7 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
 
 resource "google_service_account_iam_member" "gh_pool_impersonator" {
     provider = google-beta
-    service_account_id = google_service_account.sa_art_repo.name
+    service_account_id = google_service_account.sa_github_actions.name
     role = "roles/iam.workloadIdentityProvider"
     member = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/*"
 }
@@ -128,7 +124,7 @@ resource "google_sql_database_instance" "this" {
 
 ## Create Artifact Factory
 
-resource "google_artifact_registry_repository" "gtd-app" {
+resource "google_artifact_registry_repository" "gtd_app" {
     provider = google-beta
     location = var.region
     repository_id = "gtd-app"
@@ -138,13 +134,27 @@ resource "google_artifact_registry_repository" "gtd-app" {
 
 resource "google_artifact_registry_repository_iam_member" "sa_art_repo" {
     provider = google-beta
-    location = google_artifact_registry_repository.gtd-app.location
-    repository = google_artifact_registry_repository.gtd-app.name
+    location = google_artifact_registry_repository.gtd_app.location
+    repository = google_artifact_registry_repository.gtd_app.name
     role = "roles/artifactregistry.writer"
     member = "serviceAccount:${google_service_account.sa_art_repo.email}"
 }
 
 ## Create the compute instance (bashion host)
+
+resource "google_service_account_key" "sa_bastion" {
+    service_account_id = google_service_account.sa_bastion.name
+}
+
+resource "tls_private_key" "bastion" {
+    algorithm = "RSA"
+    rsa_bits = 4096
+}
+
+resource "google_os_login_ssh_public_key" "bastion" {
+    user = google_service_account.sa_bastion.email
+    key = tls_private_key.bashion.public_key_openssh
+}
 
 resource "google_compute_instance" "bastion1" {
     name = "bastion-1"
