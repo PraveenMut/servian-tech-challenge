@@ -65,6 +65,7 @@ resource "google_compute_network" "private" {
     provider = google-beta
     name = "private-network"
     routing_mode = "REGIONAL"
+    depends_on   = [google_project_service.this]
 }
 
 resource "google_compute_global_address" "private_ip_address" {
@@ -98,7 +99,7 @@ resource "google_vpc_access_connector" "this" {
 
 resource "google_sql_database_instance" "this" {
     provider = google-beta
-    name = var
+    name = var.database_instance_name
     region = var.region
     database_version = "POSTGRES_9_6"
     depends_on = [google_service_networking_connection.private_vpc_connection]
@@ -120,6 +121,11 @@ resource "google_sql_database_instance" "this" {
           private_network = google_compute_network.private.self_link
         }
     }
+}
+
+resource "google_sql_database" "database" {
+    name = var.database_name
+    instance = google_sql_database_instance.this.name
 }
 
 ## Create Artifact Factory
