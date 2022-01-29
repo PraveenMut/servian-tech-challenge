@@ -62,7 +62,7 @@ resource "google_sql_database_instance" "this" {
     }
 }
 
-resource "google_sql_database" "database" {
+resource "google_sql_database" "app" {
     name = var.database_name
     instance = google_sql_database_instance.this.name
 }
@@ -110,7 +110,7 @@ resource "google_compute_instance" "bastion1" {
     boot_disk {
         initialize_params {
             image = "centos-cloud/centos-7"
-            size = 10
+            size = 20
         }
     }
     network_interface {
@@ -128,6 +128,14 @@ resource "google_compute_instance" "bastion1" {
         enable-oslogin = "TRUE"
     }
 
+    metadata_startup_script = <<EOF
+      #!/bin/bash
+      yum install -y yum-utils;
+      yum-config-manager --add-repo "https://download.docker.com/linux/centos/docker-ce.repo";
+      yum install -y docker-ce docker-ce-cli containerd.io;
+      systemctl start docker
+      EOF
+
     provisioner "remote-exec" {
         connection {
           type = "ssh"
@@ -135,14 +143,22 @@ resource "google_compute_instance" "bastion1" {
           private_key = tls_private_key.bashion.private_key_pem
         }
         inline = [
-          "echo 'Great Scott! We have a connection, Marty!'"
+          "sudo usermod -aG docker $USER",
+          "newgrp docker",
+          "curl -L https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -o cloud_sql_proxy",
+          "chmod +x cloud_sql_proxy",
+          "sudo mv cloud_sql_proxy /usr/local/bin",
+          "docker pull servian/techchallengeapp",
+          "cloud-sql-proxy -instances=${google_sql_database_instance.this.connection_name}=tcp:5432 &",
+          "docker run -e VTT_DBUSER=${var.database_username} -e VTT_DBPASSWORD=${var.database_password} -e VTT_DBHOST=\"127.0.0.1\" servian/techchallengeapp updatedb -s"
         ]
     }
 
     depends_on = [
        "google_compute_firewall.allow_ssh_to_bastion",
        "google_service_account.sa_bastion",
-       "tls_private_key.bastion"
+       "tls_private_key.bastion",
+       "google_sql_database.app"
     ]
 }
 
