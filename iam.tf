@@ -3,31 +3,30 @@
 resource "google_service_account" "sa_art_repo" {
     account_id = "sa-art-repo"
     display_name = "Artifact Repository Service Account"
-    depends_on = [google_project_service.this]
 }
 
 resource "google_service_account" "sa_github_actions" {
     account_id = "sa-github-actions"
     display_name = "GitHub Actions Service Account"
-    depends_on = [google_project_service.this]
 }
 
 resource "google_service_account" "sa_bastion" {
     account_id = "sa-bastion"
     display_name = "Service Account for the bastion host"
-    depends_on = [google_project_service.this]
 }
 
-resource "google_service_account_iam_member" "sa_github_actions" {
-  service_account_id = google_service_account.sa_github_actions.name
+resource "google_project_iam_member" "sa_github_actions" {
+  project = var.project
   role = "roles/run.developer"
   member = "serviceAccount:${google_service_account.sa_github_actions.email}"
 }
 
-resource "google_service_account_iam_member" "sa_bastion" {
-    service_account_id = google_service_account.sa_bastion.name
+resource "google_project_iam_member" "sa_bastion" {
+    project = var.project
     for_each = toset([
+        "roles/compute.instanceAdmin",
         "roles/compute.osAdminLogin",
+        "roles/compute.instanceAdmin.v1",
         "roles/iam.serviceAccountUser",
         "roles/cloudsql.editor"
     ])
