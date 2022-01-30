@@ -35,6 +35,7 @@ variable "database_name" {
 variable "gcp_apis" {
     type = set(string)
     default = [
+      "iam.googleapis.com",
       "compute.googleapis.com",
       "run.googleapis.com",
       "cloudresourcemanager.googleapis.com",
@@ -48,4 +49,13 @@ variable "gcp_apis" {
 variable "network_source_tags" {
   type = list(string)
   default = ["bastion"]
+}
+
+variable "database_username" {
+  type = string
+}
+
+variable "database_password" {
+  type = string
+  sensitive = true
 }

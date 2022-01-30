@@ -5,8 +5,8 @@ provider "google" {
 }
 
 provider "google-beta" {
-  project     = var.gcp_project
-  region      = var.gcp_region
+  project     = var.project
+  region      = var.region
   credentials = file(var.credentials)
 }
 

@@ -3,16 +3,19 @@
 resource "google_service_account" "sa_art_repo" {
     account_id = "sa-art-repo"
     display_name = "Artifact Repository Service Account"
+    depends_on = [google_project_service.this]
 }
 
 resource "google_service_account" "sa_github_actions" {
     account_id = "sa-github-actions"
     display_name = "GitHub Actions Service Account"
+    depends_on = [google_project_service.this]
 }
 
 resource "google_service_account" "sa_bastion" {
     account_id = "sa-bastion"
     display_name = "Service Account for the bastion host"
+    depends_on = [google_project_service.this]
 }
 
 resource "google_service_account_iam_member" "sa_github_actions" {
@@ -23,11 +26,11 @@ resource "google_service_account_iam_member" "sa_github_actions" {
 
 resource "google_service_account_iam_member" "sa_bastion" {
     service_account_id = google_service_account.sa_bastion.name
-    for_each = [
+    for_each = toset([
         "roles/compute.osAdminLogin",
         "roles/iam.serviceAccountUser",
         "roles/cloudsql.editor"
-    ]
+    ])
     role = each.key
     member= "serviceAccount:${google_service_account.sa_bastion.email}"
 }
@@ -40,7 +43,7 @@ resource "google_iam_workload_identity_pool" "github_pool" {
 resource "google_iam_workload_identity_pool_provider" "github_provider" {
     provider = google-beta
     workload_identity_pool_id = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
-    workload_identity_pool_provider_id = "github_provider-1"
+    workload_identity_pool_provider_id = "github-provider-1"
     display_name = "GitHub WIF Provider"
     attribute_mapping = {
         "google.subject" = "assertion.sub"
