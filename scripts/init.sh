@@ -6,7 +6,9 @@
 
 set -euo pipefail
 
-mkdir -p ../.config
+cd ..
+
+mkdir -p .config
 
 # Create vars to specify relevant authN
 export PROJECT_NAME="servian-gtd"
@@ -16,7 +18,6 @@ export BILLING_ACCOUNT="$(gcloud beta billing accounts list | grep "True" | awk 
 
 # specify vars for terraform runs
 export GOOGLE_PROJECT="${PROJECT_NAME}"
-export GOOGLE_APPLICATION_CREDENTIALS="${TF_CREDS}"
 
 # Create project, underlying IAM for the terraform user
 echo "Creating Project..."
@@ -39,20 +40,45 @@ gcloud iam service-accounts keys create ${TF_CREDS} \
 echo "Add in IAM policies for the terraform account..."
 gcloud projects add-iam-policy-binding ${PROJECT_NAME} \
     --member serviceAccount:${TF_ADMIN}@${PROJECT_NAME}.iam.gserviceaccount.com \
-    --role roles/viewer
-
-gcloud projects add-iam-policy-binding ${PROJECT_NAME} \
-    --member serviceAccount:${TF_ADMIN}@${PROJECT_NAME}.iam.gserviceaccount.com \
     --role roles/editor
 
 gcloud projects add-iam-policy-binding ${PROJECT_NAME} \
     --member serviceAccount:${TF_ADMIN}@${PROJECT_NAME}.iam.gserviceaccount.com \
     --role roles/storage.admin
 
+gcloud projects add-iam-policy-binding ${PROJECT_NAME} \
+    --member serviceAccount:${TF_ADMIN}@${PROJECT_NAME}.iam.gserviceaccount.com \
+    --role roles/resourcemanager.projectIamAdmin
+
+gcloud projects add-iam-policy-binding ${PROJECT_NAME} \
+    --member=serviceAccount:${TF_ADMIN}@${PROJECT_NAME}.iam.gserviceaccount.com \
+    --role=roles/servicenetworking.networksAdmin
+
+gcloud projects add-iam-policy-binding ${PROJECT_NAME}  \
+    --member serviceAccount:${TF_ADMIN}@${PROJECT_NAME}.iam.gserviceaccount.com \
+    --role roles/iam.workloadIdentityPoolAdmin
 
 # Enable the serviceusage API to allow terraform to create IAM
-echo "Enable the Service Usage API to allow Terraform to interact with the underlying GCP REST APIs..."
-gcloud services enable serviceusage.googleapis.com
+echo "Enable APIs to allow Terraform to interact with the underlying GCP REST APIs..."
+
+SERVICES=(
+    "serviceusage.googleapis.com" 
+    "cloudresourcemanager.googleapis.com" 
+    "iam.googleapis.com" 
+    "compute.googleapis.com" 
+    "run.googleapis.com"
+    "cloudresourcemanager.googleapis.com" 
+    "vpcaccess.googleapis.com" 
+    "artifactregistry.googleapis.com" 
+    "sqladmin.googleapis.com" 
+    "servicenetworking.googleapis.com" 
+    )
+
+for s in "${SERVICES[@]}"
+do
+    echo "Enabling service ${s}"
+    gcloud services enable "${s}"
+done
 
 # Create bucket for remote state and set versioning
 echo "Create Bucket for remote TF state..."
@@ -61,8 +87,7 @@ gsutil versioning set on gs://servian-terraform
 
 # Init the backend
 echo "Initalising Terraform..."
-cd ..
-terraform init
+GOOGLE_APPLICATION_CREDENTIALS="${TF_CREDS}" terraform init
 
 
 echo "|-------------------------------------------|"
