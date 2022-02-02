@@ -2,7 +2,7 @@ name: build-and-deploy
 on:
   push:
     branches:
-      - "master"
+      - "main"
 env:
   REGION: australia-southeast1
   PROJECT_ID: servian-gtd-application
