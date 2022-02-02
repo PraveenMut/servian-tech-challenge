@@ -1,6 +1,6 @@
 variable "project" {
     type = string
-    default = "servian-gtd"
+    default = "servian-gtd-application"
 }
 
 variable "app_name" {
@@ -8,14 +8,19 @@ variable "app_name" {
   default = "gtd-app"
 }
 
+variable "vpc" {
+  type = string
+  default = "default"
+}
+
 variable "region" {
     type = string
-    default = "australia-southeast-1"
+    default = "australia-southeast1"
 }
 
 variable "zone" {
     type = string
-    default = "australia-southeast-1a"
+    default = "australia-southeast1-a"
 }
 
 variable "database_instance_name" {
@@ -57,5 +62,5 @@ variable "database_username" {
 
 variable "database_password" {
   type = string
-  sensitive = true
+  # sensitive = true
 }
