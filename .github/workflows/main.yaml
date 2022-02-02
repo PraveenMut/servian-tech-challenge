@@ -46,6 +46,9 @@ jobs:
           tags: ${{ env.BASE_IMAGE }}:${{ github.sha }}
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     needs: [build-and-push]
     steps:
       - uses: actions/checkout@v2
