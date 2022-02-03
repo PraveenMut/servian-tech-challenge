@@ -1,5 +1,7 @@
 ## Create IAM and workload federation identity pools for GitHub Actions
 
+data "google_compute_default_service_account" "default" {}
+
 resource "google_service_account" "sa_art_repo" {
     account_id = "sa-art-repo"
     display_name = "Artifact Repository Service Account"
@@ -17,7 +19,7 @@ resource "google_service_account" "sa_bastion" {
 
 resource "google_project_iam_member" "sa_github_actions" {
   project = var.project
-  role = "roles/run.developer"
+  role = "roles/run.admin"
   member = "serviceAccount:${google_service_account.sa_github_actions.email}"
 }
 
@@ -25,39 +27,44 @@ resource "google_project_iam_member" "sa_bastion" {
     project = var.project
     for_each = toset([
         "roles/compute.instanceAdmin",
-        "roles/compute.osAdminLogin",
+        "roles/cloudsql.editor",
         "roles/compute.instanceAdmin.v1",
+        "roles/compute.osAdminLogin",
         "roles/iam.serviceAccountUser",
-        "roles/cloudsql.editor"
     ])
     role = each.key
     member= "serviceAccount:${google_service_account.sa_bastion.email}"
 }
 
-resource "google_iam_workload_identity_pool" "github_pool" {
-    provider = google-beta
-    workload_identity_pool_id = "github-pool-1"
+resource "google_service_account_iam_member" "gh_compute_impersonate" {
+  service_account_id = data.google_compute_default_service_account.default.name
+  role = "roles/iam.serviceAccountUser"
+  member = "serviceAccount:${google_service_account.sa_github_actions.email}"
 }
 
-resource "google_iam_workload_identity_pool_provider" "github_provider" {
-    provider = google-beta
-    workload_identity_pool_id = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
-    workload_identity_pool_provider_id = "github-provider-1"
-    display_name = "GitHub WIF Provider"
-    attribute_mapping = {
-        "google.subject" = "assertion.sub"
-        "attribute.aud"  = "assertion.aud"
-        "attribute.actor" = "assertion.actor"
-    }
-    oidc {
-      allowed_audiences = ["sigstore"]
-      issuer_uri = "https://vstoken.actions.githubusercontent.com"
-    }
+resource "google_service_account_iam_binding" "bastion_token_creator" {
+  service_account_id = google_service_account.sa_bastion.name
+  role = "roles/iam.serviceAccountTokenCreator"
+  members = ["serviceAccount:terraform-admin@${var.project}.iam.gserviceaccount.com"]
 }
 
-resource "google_service_account_iam_member" "gh_pool_impersonator" {
-    provider = google-beta
-    service_account_id = google_service_account.sa_github_actions.name
-    role = "roles/iam.workloadIdentityProvider"
-    member = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/*"
+module "gh_oidc" {
+  source      = "terraform-google-modules/github-actions-runners/google//modules/gh-oidc"
+  project_id  = var.project
+  pool_id     = "github-actions-pool"
+  provider_id = "github-actions-provider"
+  attribute_mapping = {
+      "google.subject" = "assertion.sub"
+      "attribute.aud"  = "assertion.aud"
+      "attribute.actor" = "assertion.actor"
+  }
+  allowed_audiences = ["sigstore"]
+  provider_description = "Workload Federated Identity pool for GitHub Actions"
+  provider_display_name = "GitHub Actions WIF"
+  sa_mapping = {
+    "sa_github_actions" = {
+      sa_name   = "projects/${var.project}/serviceAccounts/${google_service_account.sa_github_actions.email}"
+      attribute = "*"
+    }
+  }
 }
