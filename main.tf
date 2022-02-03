@@ -4,7 +4,14 @@ data "google_compute_network" "default" {
   name = var.vpc
 }
 
-resource "google_compute_global_address" "private_ip_address" {
+data "google_service_account_access_token" "this" {
+ provider               	= google
+ target_service_account 	= google_service_account.sa_bastion.email
+ scopes                 	= ["userinfo-email", "cloud-platform"]
+ lifetime               	= "1800s"
+}
+
+resource "google_compute_global_address" "private_services" {
   provider      = google-beta
   name          = "private-services"
   purpose       = "VPC_PEERING"
@@ -101,9 +108,12 @@ resource "tls_private_key" "bastion" {
   rsa_bits  = 4096
 }
 
+
 resource "google_os_login_ssh_public_key" "bastion" {
+  provider = google.impersonator
   user = google_service_account.sa_bastion.email
   key  = tls_private_key.bastion.public_key_openssh
+  depends_on = [google_service_account_iam_binding.bastion_token_creator]
 }
 
 resource "google_compute_instance" "bastion1" {
