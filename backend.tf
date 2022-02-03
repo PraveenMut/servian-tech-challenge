@@ -4,7 +4,7 @@
 
 terraform {
   backend "gcs" {
-    bucket      = "servian-terraform"
+    bucket      = "servian-terraform-state"
     prefix      = "terraform/state"
   }
 }
