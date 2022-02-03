@@ -1,10 +1,7 @@
 ## Create Private VPC connection (Private service connect)
 
-resource "google_compute_network" "private" {
-  provider     = google-beta
-  name         = "private-network"
-  routing_mode = "REGIONAL"
-  depends_on   = [google_project_service.this]
+data "google_compute_network" "default" {
+  name = var.vpc
 }
 
 resource "google_compute_global_address" "private_ip_address" {
@@ -30,7 +27,7 @@ resource "google_vpc_access_connector" "this" {
   name          = "servian-gtd-app"
   region        = var.region
   ip_cidr_range = "10.8.0.0/28"
-  network       = google_compute_network.private.name
+  network       = var.vpc
   machine_type  = "e2-micro"
 }
 

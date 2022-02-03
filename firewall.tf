@@ -6,7 +6,7 @@
 ## DB instance.
 resource "google_compute_firewall" "allow_ssh_to_bastion" {
     name    = "allow-ssh-to-bastion"
-    network = "default"
+    network = var.vpc
     direction = "INGRESS"
 
     allow {
