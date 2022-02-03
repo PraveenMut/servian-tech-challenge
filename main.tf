@@ -22,9 +22,9 @@ resource "google_compute_global_address" "private_services" {
 
 resource "google_service_networking_connection" "private_services" {
   provider                = google-beta
-  network                 = google_compute_network.private.self_link
+  network                 = data.google_compute_network.default.self_link
   service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+  reserved_peering_ranges = [google_compute_global_address.private_services.name]
 }
 
 ## Create Serverless VPC Connector
@@ -86,15 +86,17 @@ resource "google_artifact_registry_repository" "gtd_app" {
   repository_id = var.app_name
   description   = "Repository to house the servian gtd application"
   format        = "DOCKER"
-  depends_on = [google_project_service.this]
 }
 
-resource "google_artifact_registry_repository_iam_member" "sa_art_repo" {
+resource "google_artifact_registry_repository_iam_binding" "service_accounts" {
   provider   = google-beta
   location   = google_artifact_registry_repository.gtd_app.location
   repository = google_artifact_registry_repository.gtd_app.name
   role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${google_service_account.sa_art_repo.email}"
+  members    =  [
+    "serviceAccount:${google_service_account.sa_art_repo.email}",
+    "serviceAccount:${google_service_account.sa_github_actions.email}"
+  ]
 }
 
 ## Create the compute instance (bashion host)
@@ -146,35 +148,45 @@ resource "google_compute_instance" "bastion1" {
 
   metadata_startup_script = <<-EOT
     #!/bin/bash
+    yum update;
     yum install -y yum-utils;
-    yum-config-manager --add-repo "https://download.docker.com/linux/centos/docker-ce.repo";
-    yum install -y docker-ce docker-ce-cli containerd.io;
+    yum install -y git;
+    yum install -y golang;
     EOT
 
-  provisioner "remote-exec" {
+  provisioner "file" {
     connection {
       type        = "ssh"
       host        = self.network_interface[0].access_config[0].nat_ip
-      user        = google_service_account.sa_bastion.unique_id
+      user        = "sa_${google_service_account.sa_bastion.unique_id}"
       private_key = tls_private_key.bastion.private_key_pem
     }
-    inline = [
-      "sudo systemctl start docker",
-      "sudo usermod -aG docker $USER",
-      "newgrp docker",
-      "curl -L https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -o cloud_sql_proxy",
-      "chmod +x cloud_sql_proxy",
-      "sudo mv cloud_sql_proxy /usr/local/bin",
-      "docker pull servian/techchallengeapp",
-      "cloud-sql-proxy -instances=${google_sql_database_instance.this.connection_name}=tcp:5432 &",
-      "docker run -e VTT_DBUSER=${var.database_username} -e VTT_DBPASSWORD=${var.database_password} -e VTT_DBHOST=\"127.0.0.1\" servian/techchallengeapp updatedb -s"
-    ]
+    source = "post_init.sh"
+    destination = "/tmp/post_init.sh"
   }
   depends_on = [
-    google_project_service.this,
     google_sql_database.app,
-    google_compute_firewall.allow_ssh_to_bastion,
+    google_project_iam_member.sa_bastion,
+    google_os_login_ssh_public_key.bastion,
+    google_compute_firewall.allow_ssh_to_bastion
   ]
+}
+
+resource "null_resource" "initalisation_script" {
+  connection {
+    type        = "ssh"
+    host        = google_compute_instance.bastion1.network_interface[0].access_config[0].nat_ip
+    user        = "sa_${google_service_account.sa_bastion.unique_id}"
+    private_key = tls_private_key.bastion.private_key_pem
+  }
+  
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/post_init.sh",
+      "VTT_DBUSER=${var.database_username} VTT_DBPASSWORD=${var.database_password} VTT_DBHOST=\"127.0.0.1\" /tmp/post_init.sh"
+      ]
+  }
+  depends_on = [google_compute_instance.bastion1]
 }
 
 ## Create LB
