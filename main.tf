@@ -6,14 +6,14 @@ data "google_compute_network" "default" {
 
 resource "google_compute_global_address" "private_ip_address" {
   provider      = google-beta
-  name          = "private-ip-address"
+  name          = "private-services"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
-  network       = google_compute_network.private.self_link
+  network       = data.google_compute_network.default.self_link
 }
 
-resource "google_service_networking_connection" "private_vpc" {
+resource "google_service_networking_connection" "private_services" {
   provider                = google-beta
   network                 = google_compute_network.private.self_link
   service                 = "servicenetworking.googleapis.com"
@@ -24,7 +24,7 @@ resource "google_service_networking_connection" "private_vpc" {
 
 resource "google_vpc_access_connector" "this" {
   provider      = google-beta
-  name          = "servian-gtd-app"
+  name          = var.app_name
   region        = var.region
   ip_cidr_range = "10.8.0.0/28"
   network       = var.vpc
@@ -38,7 +38,7 @@ resource "google_sql_database_instance" "this" {
   name             = var.database_instance_name
   region           = var.region
   database_version = "POSTGRES_9_6"
-  depends_on       = [google_service_networking_connection.private_vpc]
+  depends_on       = [google_service_networking_connection.private_services]
   settings {
     tier              = "db-f1-micro"
     availability_type = "REGIONAL"
@@ -54,7 +54,7 @@ resource "google_sql_database_instance" "this" {
     }
     ip_configuration {
       ipv4_enabled    = false
-      private_network = google_compute_network.private.self_link
+      private_network = data.google_compute_network.default.self_link
     }
   }
 }
