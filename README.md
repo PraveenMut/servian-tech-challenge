@@ -14,6 +14,10 @@ A To-do/Get Tasks Done (GTD) application written in Golang deployed in Golang wi
 * [Known Issues](#known-issues)
 * [Improvements](#improvements)
 
+
+## Architecture
+![Cloud Architecture](./gcloud-run-arch.png)
+
 ## Background & Reasoning of the Solution
 Many considerations about architecture and the best methodologies to deploy this application in a highly available fashion have been delibrated. The following architecture deployments have thus been conceived as follows:
 
@@ -42,9 +46,9 @@ Due to these reasons, Cloud Run (or KNative under the hood) was selected. Cloud 
 ### Security
 Security implications were also deeply considered in this deployment. The fortunate news is that Cloud Run has the ability to restrict Ingress to internal and most importantly, LBs. LBs were not deployment at this time due to the interests of time, but can be attached through a serverless serverless Network Endpoint Group (NEG). 
 
-The LB itself can be attached with Cloud Armor for DDoS protections and the 10 OWASP mitigations. 
+The LB itself can be attached with Cloud Armor for DDoS protections and mitigations for the top 10 OWASP vulnerabilities. 
 
-All Cloud Run resources consist of IAM policies which restrict the access of external resources. By nature, cloud run resources only have access to access SQL, Compute and Arifact Registry (Google's Private Container Registry). All requests to unauthorised resources in GCP will be met with a 403 Forbidden. These IAMs are entacted strictly in this demo project.
+All Cloud Run resources consist of IAM policies which restrict the access of external resources. By nature, cloud run resources only have access to access SQL, Compute and Artifact Registry (Google's Private Container Registry). All requests to unauthorised resources in GCP will be met with a 403 Forbidden. These IAMs are enacted strictly in this demo project.
 
 External CI/CD Authentication has been conducted through Workload Identity Federation (WIF) enabling Keyless auth. It does this by translating short lived OIDC tokens into Google Security Tokens to authenticate as a service account to subsequently access authorised GCP resources. It completely removes all risks of long-lived JSON keys in accounts or commits. 
 
@@ -58,13 +62,12 @@ A developer working on the project only need to push their code to the productio
 
 Although this may be a bit controversial, I made the decision to only install a dependency until its well and truly indeed. Because of this, the only dependencies needed are:
 
-* Terraform (tested on v1.1.3)
-* gcloud (tested on v368.0.0)
-
+* Terraform (tested on `v1.1.3`)
+* gcloud (tested on `v368.0.0`)
 
 ## Deployment Instructions
 
-A initaliation script has been provided in the scripts directory. Modify the script if desired (especially the bucket name as it **must** be globally unique to all GCP projects).
+A initaliation script has been provided in the scripts directory. Modify the script if desired (especially the bucket name as it **must** be globally unique to all GCP projects). To run, change directory to the scripts folder, and run `./init.sh`.
 
 Ensure you are the *owner* of the organisation as Terraform should be run *locally*. Alternatively, ensure the appropriate permissions of a user has been assigned. This beyond the scope of the challenge. 
 
@@ -86,3 +89,19 @@ Post infrastructure application, you will need to run the provided post_init.sh 
 This will install all dependencies and seed the database in the private subnet.
 
 ## Known Issues
+
+The configuration management of instances through Terraform's remote exec resources is **extremely fragile** and should be used in production workloads. It can lead to tainted instance builds. In the interest of time, a script has been placed (`${HOME}/post_init.sh`) in lieu of a configuration management utility to execute the post initialistion steps and seed the database. 
+
+A better option is to integrate a workflow that executes a configuration management utility, such as Ansible, to ensure underlying configuration compliance with idempotency.
+
+## Improvements
+
+This is my first attempt at designing cloud architecture and implementing its underlying resources in GCP (my experience lies with on-premises infrastructure). Due to this there are multiple facets of improvements at this first iteration. The first set of improvements:
+
+- Set up an external LB to front the cloud run application
+- Set up Cloud CDN to serve to the closest PoPs
+- Set up Cloud Armor for additonal protection
+- Set up High/low privilege service accounts for Terraform. One as a low privileged that impersonates a high privileged service account.
+- Set up declarative configuration through YAML and inject it through GitHub Actions
+- Set up terragrunt when infrastructure expands
+- Research possible methods of first run app bootstrapping to avoid undertaking these in the bastion. A Helm-hook like service.
