@@ -69,7 +69,7 @@ Although this may be a bit controversial, I made the decision to only install a 
 
 A initaliation script has been provided in the scripts directory. Modify the script if desired (especially the bucket name as it **must** be globally unique to all GCP projects). To run, change directory to the scripts folder, and run `./init.sh`.
 
-Ensure you are the *owner* of the organisation as Terraform should be run *locally*. Alternatively, ensure the appropriate permissions of a user has been assigned. This beyond the scope of the challenge. 
+Ensure you are the *owner* of the organisation as Terraform should be run *locally*. Alternatively, ensure the appropriate IAM Roles of a user have been assigned (editor). This beyond the scope of the challenge. 
 
 The script will then create:
 * Create a project
@@ -78,13 +78,22 @@ The script will then create:
 * Fetch its keys 
 * Store it in .config. Please ensure that these are *not shared*. These are the keys to the kingdom.
 * Assign IAM roles appropriate for the project
+   * IAM Admin
+   * Workload Identity Pool Admin
+   * Artifact Registry Admin
+   * Compute Admin
+   * Network Admin
+   * Storage Admin
+   * Resource Admin
+   * Service Account Token Creator
+   * Service Account Admin
 * Enable Google APIs
 * Create a remote state bucket
-* Initalise Terraform
+* Initialise Terraform
 
 Post initalisation, the person running the project can use the provided "convenience wrapper" `./terrawrapper.sh COMMAND` which injects all necessary variables necessary for a terraform plan, apply and output (all infrastructure mutating commands).
 
-Post infrastructure application, you will need to run the provided post_init.sh script in the bastion host. Obtain the private key from the terraform output, place it in a secure location, `ssh` into the machine (`sa_UNIQUE_ACCOUNT_ID@HOST`) and run `./post_init.sh`.
+Post infrastructure application, you will need to run the provided post_init.sh script in the bastion host. Obtain the private key from the terraform output, place it in a secure location, `ssh` into the machine (`sa_UNIQUE_ACCOUNT_ID@HOST`) and run `./bootstrap.sh`. **Terraform should automatically run this step through Remote Exec**. However, it can fail. This is addressed in Known Issues.
 
 This will install all dependencies and seed the database in the private subnet.
 
