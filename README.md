@@ -90,9 +90,38 @@ This will install all dependencies and seed the database in the private subnet.
 
 ## Known Issues
 
-The configuration management of instances through Terraform's remote exec resources is **extremely fragile** and should be used in production workloads. It can lead to tainted instance builds. In the interest of time, a script has been placed (`${HOME}/post_init.sh`) in lieu of a configuration management utility to execute the post initialistion steps and seed the database. 
+The configuration management of instances through Terraform's remote exec resources is **extremely fragile** and should **NOT** be used in production workloads. It can lead to tainted instance builds. In the interest of time, a sleep resource has been put into place which should allievate race conditions presented by a new instantiation of an instance (whereby the dependent packages such as golang or yum-utils aren't able to be accessed).
 
-A better option is to integrate a workflow that executes a configuration management utility, such as Ansible, to ensure underlying configuration compliance with idempotency.
+A better option is to integrate a workflow that executes a configuration management utility, such as Ansible, to ensure underlying configuration compliance with idempotency. A standard recommendation would be:
+```
+ansible/
+    group_vars/
+        all.yml
+    host_vars/
+        bastion.yml
+    inventory/
+        instances
+    roles/
+        common/
+            tasks/
+                main.yml
+    site.yml
+```
+
+where site.yml would include:
+
+```
+- hosts: all
+  roles:
+    - common
+```
+
+This should be run as:
+```
+ansible-playbook -i inventory/instances site.yml --tags=<specific_task_tags>
+```
+
+But as creating thoroughly tested playbooks is another task in of itself, it will be a future improvement.
 
 ## Improvements
 
