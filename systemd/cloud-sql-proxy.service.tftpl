@@ -1,0 +1,14 @@
+[Install]
+WantedBy=multi-user.target
+
+[Unit]
+Description=Cloud SQL Proxy Service for GCE
+Requires=network.target
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/local/bin
+ExecStart=/usr/local/bin/cloud_sql_proxy -dir=/var/run/cloud_sql_proxy -instances=${database_instance_name}=tcp:5432
+Restart=always
+StandardOutput=journal
