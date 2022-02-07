@@ -3,16 +3,19 @@ _By Praveen Muthuthanthirige_
 
 A To-do/Get Tasks Done (GTD) application written in Golang deployed in Golang with hyper flexible scaling and High Availability (HA) in mind.
 
-## Table of Contents
+# Table of Contents
 * [Background and Reasoning of the solution](#background-and-reasoning-of-the-solution)
     * [Security](#security)
-    * [Application Deployments](#application_deployment)
+    * [Application Deployments](#application-deployments)
     * [Selection](#selection)
 * [Architecture](#architecture)
 * [Prerequisites](#prerequisites)
 * [Deployment Instructions](#deployment-instructions)
 * [Known Issues](#known-issues)
 * [Improvements](#improvements)
+
+# Deployed Application:
+https://gtd-app-dlz5eg5pta-ts.a.run.app
 
 
 ## Architecture
